@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <title>Неоновый Рикошет</title>
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=3">
     <!-- Yandex Games SDK -->
     <script src="https://yandex.ru/games/sdk/v2"></script>
 </head>
@@ -50,13 +50,17 @@
                     Разбивай энергетические блоки, собирай мощные бонусы и запускай цепные плазменные взрывы!
                 </p>
                 <div class="best-banner">
-                    Лучший результат: <strong id="start-best">0</strong>
+                    <div>Лучший результат: <strong id="start-best">0</strong></div>
+                    <div id="cloud-status" class="cloud-status hidden">☁️ Облачное сохранение синхронизировано</div>
                 </div>
                 <div class="controls-hint">
                     <div>🖱️ <strong>ПК:</strong> мышь или клавиши ← → / A D, Пробел — пуск</div>
                     <div>📱 <strong>Смартфон:</strong> веди пальцем по экрану, отпусти — пуск</div>
                 </div>
-                <button id="btn-start" class="primary-btn" type="button">ИГРАТЬ</button>
+                <div class="btn-stack">
+                    <button id="btn-continue" class="primary-btn hidden" type="button">ПРОДОЛЖИТЬ (УР. <span id="continue-level">2</span>)</button>
+                    <button id="btn-start" class="primary-btn" type="button">ИГРАТЬ</button>
+                </div>
             </div>
         </div>
 
@@ -112,6 +116,6 @@
         </div>
     </div>
 
-    <script src="game.js?v=2"></script>
+    <script src="game.js?v=3"></script>
 </body>
 </html>

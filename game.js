@@ -573,6 +573,105 @@
     }
 
     // =========================================================================
+    // Облачные сохранения Yandex Games SDK (Player API: getData / setData)
+    // =========================================================================
+    const CloudSave = {
+        player: null,
+        ready: false,
+        lastFlushTime: 0,
+        pendingTimer: null,
+
+        async init(ysdk) {
+            if (!ysdk || typeof ysdk.getPlayer !== 'function') return;
+            try {
+                // scopes: false — не запрашиваем имя/аватар при старте (требование модерации)
+                const player = await ysdk.getPlayer({ scopes: false });
+                this.player = player;
+                window.player = player;
+
+                const cloudData = (await player.getData()) || {};
+                const cloudBest = Number.isFinite(Number(cloudData.bestScore)) ? Math.max(0, Math.floor(Number(cloudData.bestScore))) : 0;
+                const cloudMaxLevel = Number.isFinite(Number(cloudData.maxLevel)) ? Math.max(1, Math.floor(Number(cloudData.maxLevel))) : 1;
+
+                const localWasAhead = state.bestScore > cloudBest || state.maxLevel > cloudMaxLevel;
+
+                state.bestScore = Math.max(state.bestScore, cloudBest);
+                state.maxLevel = Math.max(state.maxLevel, cloudMaxLevel);
+
+                if (typeof cloudData.userMuted === 'boolean') {
+                    SoundFX.userMuted = cloudData.userMuted;
+                    SafeStorage.setInt('neon_ricochet_muted', SoundFX.userMuted ? 1 : 0);
+                }
+                if (typeof cloudData.musicMuted === 'boolean') {
+                    SoundFX.musicMuted = cloudData.musicMuted;
+                    SafeStorage.setInt('neon_ricochet_music_muted', SoundFX.musicMuted ? 1 : 0);
+                }
+
+                SafeStorage.setInt('neon_ricochet_best', state.bestScore);
+                SafeStorage.setInt('neon_ricochet_max_level', state.maxLevel);
+                SoundFX.syncLevels();
+
+                this.ready = true;
+                syncUIWithSavedProgress();
+
+                // Если локальный прогресс опережал облачный (например, вход после игры без авторизации)
+                if (localWasAhead) {
+                    this.save(true);
+                }
+            } catch (err) {
+                console.warn('Облачные сохранения недоступны, используется локальное хранилище:', err);
+            }
+        },
+
+        buildPayload() {
+            return {
+                bestScore: state.bestScore,
+                maxLevel: state.maxLevel,
+                userMuted: SoundFX.userMuted,
+                musicMuted: SoundFX.musicMuted
+            };
+        },
+
+        save(immediate = true) {
+            SafeStorage.setInt('neon_ricochet_best', state.bestScore);
+            SafeStorage.setInt('neon_ricochet_max_level', state.maxLevel);
+            SafeStorage.setInt('neon_ricochet_muted', SoundFX.userMuted ? 1 : 0);
+            SafeStorage.setInt('neon_ricochet_music_muted', SoundFX.musicMuted ? 1 : 0);
+
+            if (!this.player || typeof this.player.setData !== 'function') return;
+
+            const payload = this.buildPayload();
+            const now = Date.now();
+            const cooldownMs = 1100;
+            const elapsed = now - this.lastFlushTime;
+
+            if (immediate && elapsed >= cooldownMs) {
+                if (this.pendingTimer) {
+                    clearTimeout(this.pendingTimer);
+                    this.pendingTimer = null;
+                }
+                this.lastFlushTime = now;
+                this.player.setData(payload, true).catch((err) => {
+                    console.warn('Ошибка отправки облачного сохранения:', err);
+                });
+            } else {
+                // Обновляем локальный кэш SDK сразу и планируем отложенную отправку на сервер
+                this.player.setData(payload, false).catch(() => {});
+                if (!this.pendingTimer) {
+                    const waitMs = Math.max(250, cooldownMs - elapsed);
+                    this.pendingTimer = setTimeout(() => {
+                        this.pendingTimer = null;
+                        this.lastFlushTime = Date.now();
+                        if (this.player && typeof this.player.setData === 'function') {
+                            this.player.setData(this.buildPayload(), true).catch(() => {});
+                        }
+                    }, waitMs);
+                }
+            }
+        }
+    };
+
+    // =========================================================================
     // Константы игрового поля и палитры
     // =========================================================================
     const ARENA_W = 720;
@@ -659,6 +758,7 @@
     const state = {
         mode: 'menu', // 'menu' | 'playing' | 'paused' | 'levelcomplete' | 'gameover'
         level: 1,
+        maxLevel: Math.max(1, SafeStorage.getInt('neon_ricochet_max_level', 1)),
         score: 0,
         bestScore: SafeStorage.getInt('neon_ricochet_best', 0),
         lives: 3,
@@ -708,6 +808,10 @@
         ui.screenGameOver = document.getElementById('screen-gameover');
 
         ui.startBest = document.getElementById('start-best');
+        ui.cloudStatus = document.getElementById('cloud-status');
+        ui.btnStart = document.getElementById('btn-start');
+        ui.btnContinue = document.getElementById('btn-continue');
+        ui.continueLevel = document.getElementById('continue-level');
         ui.completedLevel = document.getElementById('completed-level');
         ui.levelScore = document.getElementById('level-score');
         ui.levelBonus = document.getElementById('level-bonus');
@@ -718,12 +822,10 @@
         createStarfield();
         handleResize();
         bindEvents();
-        refreshAudioButtons();
-        updateHUD();
-        ui.startBest.textContent = String(state.bestScore);
+        syncUIWithSavedProgress();
 
-        // Загружаем фоновое демо уровня 1 для красивого стартового экрана
-        buildLevel(1);
+        // Загружаем фоновое демо уровня для красивого стартового экрана
+        buildLevel(state.maxLevel);
         resetBallOnPaddle();
 
         let lastTime = performance.now();
@@ -735,6 +837,36 @@
             requestAnimationFrame(frame);
         }
         requestAnimationFrame(frame);
+    }
+
+    function syncUIWithSavedProgress() {
+        if (!ui.hud) return;
+        refreshAudioButtons();
+        updateHUD();
+        if (ui.startBest) {
+            ui.startBest.textContent = String(state.bestScore);
+        }
+        if (ui.cloudStatus) {
+            ui.cloudStatus.classList.toggle('hidden', !CloudSave.ready);
+        }
+        if (ui.btnContinue && ui.btnStart && ui.continueLevel) {
+            if (state.maxLevel > 1) {
+                ui.continueLevel.textContent = String(state.maxLevel);
+                ui.btnContinue.classList.remove('hidden');
+                ui.btnStart.textContent = 'НОВАЯ ИГРА С 1 УРОВНЯ';
+                ui.btnStart.classList.remove('primary-btn');
+                ui.btnStart.classList.add('secondary-btn');
+            } else {
+                ui.btnContinue.classList.add('hidden');
+                ui.btnStart.textContent = 'ИГРАТЬ';
+                ui.btnStart.classList.add('primary-btn');
+                ui.btnStart.classList.remove('secondary-btn');
+            }
+        }
+        if (state.mode === 'menu') {
+            buildLevel(state.maxLevel);
+            resetBallOnPaddle();
+        }
     }
 
     // =========================================================================
@@ -811,10 +943,17 @@
         });
 
         // Кнопки интерфейса
-        document.getElementById('btn-start').addEventListener('click', () => {
+        ui.btnStart.addEventListener('click', () => {
             SoundFX.unlock();
-            startNewRun();
+            startNewRun(1);
         });
+
+        if (ui.btnContinue) {
+            ui.btnContinue.addEventListener('click', () => {
+                SoundFX.unlock();
+                startNewRun(state.maxLevel);
+            });
+        }
 
         ui.btnPause.addEventListener('click', () => {
             SoundFX.unlock();
@@ -833,11 +972,13 @@
                 SoundFX.toggleMusicMute();
             }
             refreshAudioButtons();
+            CloudSave.save(false);
         });
 
         ui.btnSound.addEventListener('click', () => {
             SoundFX.toggleUserMute();
             refreshAudioButtons();
+            CloudSave.save(false);
         });
 
         document.getElementById('btn-resume').addEventListener('click', () => {
@@ -847,7 +988,7 @@
 
         document.getElementById('btn-restart-pause').addEventListener('click', () => {
             SoundFX.unlock();
-            startNewRun();
+            startNewRun(1);
         });
 
         document.getElementById('btn-next-level').addEventListener('click', () => {
@@ -857,7 +998,7 @@
 
         document.getElementById('btn-retry').addEventListener('click', () => {
             SoundFX.unlock();
-            startNewRun();
+            startNewRun(state.level);
         });
 
         // Управление указателем (мышь и тач через Pointer Events)
@@ -921,6 +1062,7 @@
             if (e.key === 'm' || e.key === 'M' || e.key === 'ь' || e.key === 'Ь') {
                 SoundFX.toggleMusicMute();
                 refreshAudioButtons();
+                CloudSave.save(false);
             }
         });
 
@@ -956,8 +1098,8 @@
         ui.screenGameOver.classList.add('hidden');
     }
 
-    function startNewRun() {
-        state.level = 1;
+    function startNewRun(startLevel = 1) {
+        state.level = Math.max(1, Math.floor(startLevel) || 1);
         state.score = 0;
         state.lives = 3;
         state.combo = 0;
@@ -986,6 +1128,7 @@
         SoundFX.setMusicMode('mellow');
         ui.screenPause.classList.remove('hidden');
         notifyGameplayStop();
+        CloudSave.save(true);
     }
 
     function resumeGame() {
@@ -1005,6 +1148,13 @@
         const bonus = 300 + state.level * 200 + state.lives * 50;
         addScore(bonus);
 
+        // Открываем следующий уровень и сохраняем прогресс в облако Яндекс Игр
+        const nextUnlocked = state.level + 1;
+        if (nextUnlocked > state.maxLevel) {
+            state.maxLevel = nextUnlocked;
+        }
+        CloudSave.save(true);
+
         ui.completedLevel.textContent = String(state.level);
         ui.levelScore.textContent = String(state.score);
         ui.levelBonus.textContent = '+' + bonus;
@@ -1016,6 +1166,9 @@
         showInterstitialAd();
 
         state.level += 1;
+        if (state.level > state.maxLevel) {
+            state.maxLevel = state.level;
+        }
         state.combo = 0;
         state.wideTimer = 0;
         state.fireballTimer = 0;
@@ -1028,6 +1181,7 @@
         state.mode = 'playing';
         SoundFX.setMusicMode('playing');
         updateHUD();
+        CloudSave.save(true);
         notifyGameplayStart();
     }
 
@@ -1036,6 +1190,7 @@
         SoundFX.setMusicMode('mellow');
         notifyGameplayStop();
         SoundFX.gameOver();
+        CloudSave.save(true);
 
         const isNewRecord = state.score > 0 && state.score >= state.bestScore;
         ui.finalScore.textContent = String(state.score);
@@ -2014,11 +2169,30 @@
             // Страховочный таймер для локального запуска вне iframe Яндекс Игр
             const localFallbackTimer = setTimeout(bootOnce, 1200);
 
-            YaGames.init().then(ysdk => {
+            YaGames.init().then(async ysdk => {
                 clearTimeout(localFallbackTimer);
                 window.ysdk = ysdk;
+
+                // Загружаем облачные сохранения игрока (Player API: getData) перед сигналом готовности
+                await Promise.race([
+                    CloudSave.init(ysdk),
+                    new Promise(resolve => setTimeout(resolve, 2000))
+                ]);
+
+                // Повторная синхронизация, если игрок авторизовался во время сессии
+                if (typeof ysdk.on === 'function' && ysdk.EVENTS) {
+                    const authEvent = ysdk.EVENTS.ACCOUNT_SELECTION_DIALOG_CLOSED || ysdk.EVENTS.EXTERNAL_AUTH_SUCCESS;
+                    if (authEvent) {
+                        ysdk.on(authEvent, () => {
+                            CloudSave.init(ysdk);
+                        });
+                    }
+                }
+
                 // Инициализация игры
                 bootOnce();
+                syncUIWithSavedProgress();
+
                 if (ysdk.features && ysdk.features.LoadingAPI) {
                     ysdk.features.LoadingAPI.ready();
                 }
