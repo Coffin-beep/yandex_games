@@ -1,0 +1,389 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #060816;
+    color: #f0f6ff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    touch-action: none;
+    overscroll-behavior: none;
+}
+
+#game-wrapper {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: pointer;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Верхняя панель HUD */
+.hud {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(94vw, 760px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 14px;
+    background: rgba(11, 16, 38, 0.78);
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45), inset 0 0 16px rgba(0, 240, 255, 0.08);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.hud-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: nowrap;
+}
+
+.stat-pill {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #7ea0cc;
+}
+
+.stat-value {
+    font-size: 17px;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.45);
+    font-variant-numeric: tabular-nums;
+}
+
+.lives-value {
+    font-size: 15px;
+    letter-spacing: 1px;
+}
+
+.hud-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto;
+}
+
+.icon-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    background: rgba(18, 28, 64, 0.85);
+    color: #ffffff;
+    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, opacity 0.14s ease;
+}
+
+.icon-btn.is-off {
+    border-color: rgba(255, 77, 125, 0.48);
+    background: rgba(38, 16, 36, 0.85);
+    opacity: 0.72;
+}
+
+.icon-btn.is-off::after {
+    content: "";
+    position: absolute;
+    width: 24px;
+    height: 2.5px;
+    background: #ff4d7d;
+    border-radius: 2px;
+    transform: rotate(-42deg);
+    box-shadow: 0 0 6px rgba(255, 77, 125, 0.8);
+    pointer-events: none;
+}
+
+.icon-btn:hover {
+    border-color: #00f0ff;
+    background: rgba(0, 240, 255, 0.18);
+}
+
+.icon-btn:active {
+    transform: scale(0.92);
+}
+
+/* Модальные оверлеи */
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: radial-gradient(circle at center, rgba(10, 16, 42, 0.72) 0%, rgba(4, 6, 18, 0.88) 100%);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 20;
+    animation: fadeIn 0.22s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.modal-card {
+    width: min(92vw, 440px);
+    padding: 28px 24px;
+    border-radius: 24px;
+    background: linear-gradient(165deg, rgba(17, 25, 58, 0.95) 0%, rgba(9, 13, 32, 0.97) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.38);
+    box-shadow:
+        0 20px 55px rgba(0, 0, 0, 0.7),
+        0 0 35px rgba(0, 240, 255, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    text-align: center;
+}
+
+.modal-card.compact {
+    width: min(90vw, 390px);
+    padding: 26px 22px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #00f0ff;
+    background: rgba(0, 240, 255, 0.12);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    margin-bottom: 12px;
+}
+
+.badge.success {
+    color: #39ff88;
+    background: rgba(57, 255, 136, 0.12);
+    border-color: rgba(57, 255, 136, 0.4);
+}
+
+.badge.danger {
+    color: #ff4d7d;
+    background: rgba(255, 77, 125, 0.14);
+    border-color: rgba(255, 77, 125, 0.42);
+}
+
+.game-title {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    text-shadow: 0 0 22px rgba(0, 240, 255, 0.55);
+    margin-bottom: 14px;
+}
+
+.game-title span {
+    background: linear-gradient(90deg, #00f0ff 0%, #ff3df0 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.modal-title {
+    font-size: clamp(22px, 5.5vw, 28px);
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    margin-bottom: 8px;
+    color: #ffffff;
+}
+
+.modal-subtitle {
+    color: #9ab2d8;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.modal-desc {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #b8caec;
+    margin-bottom: 16px;
+}
+
+.best-banner {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    font-size: 14px;
+    color: #c8daf8;
+    margin-bottom: 14px;
+}
+
+.best-banner strong {
+    color: #ffd447;
+    font-size: 16px;
+}
+
+.controls-hint {
+    text-align: left;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: #9bb1d6;
+    background: rgba(0, 240, 255, 0.05);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.controls-hint strong {
+    color: #e6f2ff;
+}
+
+.score-summary {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 14px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    color: #b4c7ea;
+}
+
+.summary-row strong {
+    font-size: 18px;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+}
+
+.new-record {
+    margin-top: 4px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(255, 212, 71, 0.16);
+    border: 1px solid rgba(255, 212, 71, 0.45);
+    color: #ffd447;
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.btn-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.primary-btn, .secondary-btn {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
+}
+
+.primary-btn {
+    background: linear-gradient(90deg, #00d8ff 0%, #7b42ff 52%, #ff2cdf 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 25px rgba(0, 216, 255, 0.35);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.primary-btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 10px 30px rgba(0, 216, 255, 0.5);
+}
+
+.primary-btn:active {
+    transform: scale(0.97);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #dce9ff;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.secondary-btn:active {
+    transform: scale(0.97);
+}
+
+@media (max-width: 440px) {
+    .hud {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+    .hud-stats {
+        gap: 10px;
+    }
+    .stat-value {
+        font-size: 15px;
+    }
+    .hide-xs {
+        display: none;
+    }
+    .hud-actions {
+        gap: 5px;
+    }
+    .icon-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 15px;
+    }
+}

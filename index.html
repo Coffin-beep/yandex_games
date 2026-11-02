@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Неоновый Рикошет</title>
+    <link rel="stylesheet" href="style.css?v=2">
+    <!-- Yandex Games SDK -->
+    <script src="https://yandex.ru/games/sdk/v2"></script>
+</head>
+<body>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Верхняя панель интерфейса (HUD) -->
+        <header id="hud" class="hud hidden">
+            <div class="hud-stats">
+                <div class="stat-pill">
+                    <span class="stat-label">УРОВЕНЬ</span>
+                    <span id="hud-level" class="stat-value">1</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">СЧЁТ</span>
+                    <span id="hud-score" class="stat-value">0</span>
+                </div>
+                <div class="stat-pill hide-xs">
+                    <span class="stat-label">РЕКОРД</span>
+                    <span id="hud-best" class="stat-value">0</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">ЖИЗНИ</span>
+                    <span id="hud-lives" class="stat-value lives-value">❤️❤️❤️</span>
+                </div>
+            </div>
+            <div class="hud-actions">
+                <button id="btn-music" class="icon-btn" type="button" aria-label="Музыка" title="Вкл/Выкл музыку (M)">🎵</button>
+                <button id="btn-sound" class="icon-btn" type="button" aria-label="Звук" title="Вкл/Выкл весь звук">🔊</button>
+                <button id="btn-pause" class="icon-btn" type="button" aria-label="Пауза" title="Пауза (P)">⏸</button>
+            </div>
+        </header>
+
+        <!-- Стартовый экран -->
+        <div id="screen-start" class="overlay">
+            <div class="modal-card">
+                <div class="badge">АРКАДА • НЕОН</div>
+                <h1 class="game-title">НЕОНОВЫЙ<br><span>РИКОШЕТ</span></h1>
+                <p class="modal-desc">
+                    Разбивай энергетические блоки, собирай мощные бонусы и запускай цепные плазменные взрывы!
+                </p>
+                <div class="best-banner">
+                    Лучший результат: <strong id="start-best">0</strong>
+                </div>
+                <div class="controls-hint">
+                    <div>🖱️ <strong>ПК:</strong> мышь или клавиши ← → / A D, Пробел — пуск</div>
+                    <div>📱 <strong>Смартфон:</strong> веди пальцем по экрану, отпусти — пуск</div>
+                </div>
+                <button id="btn-start" class="primary-btn" type="button">ИГРАТЬ</button>
+            </div>
+        </div>
+
+        <!-- Экран паузы -->
+        <div id="screen-pause" class="overlay hidden">
+            <div class="modal-card compact">
+                <h2 class="modal-title">ПАУЗА</h2>
+                <p class="modal-subtitle">Игра приостановлена</p>
+                <div class="btn-stack">
+                    <button id="btn-resume" class="primary-btn" type="button">ПРОДОЛЖИТЬ</button>
+                    <button id="btn-restart-pause" class="secondary-btn" type="button">НАЧАТЬ ЗАНОВО</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Экран перехода между уровнями -->
+        <div id="screen-level" class="overlay hidden">
+            <div class="modal-card compact">
+                <div class="badge success">СЕКТОР ЗАЧИЩЕН</div>
+                <h2 class="modal-title">УРОВЕНЬ <span id="completed-level">1</span> ПРОЙДЕН!</h2>
+                <div class="score-summary">
+                    <div class="summary-row">
+                        <span>Текущий счёт:</span>
+                        <strong id="level-score">0</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Бонус за уровень:</span>
+                        <strong id="level-bonus">+500</strong>
+                    </div>
+                </div>
+                <button id="btn-next-level" class="primary-btn" type="button">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+            </div>
+        </div>
+
+        <!-- Экран проигрыша (Game Over) -->
+        <div id="screen-gameover" class="overlay hidden">
+            <div class="modal-card compact">
+                <div class="badge danger">ИГРА ОКОНЧЕНА</div>
+                <h2 class="modal-title">ЩИТЫ ПАЛИ!</h2>
+                <div class="score-summary">
+                    <div class="summary-row">
+                        <span>Ваш счёт:</span>
+                        <strong id="final-score">0</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Рекорд:</span>
+                        <strong id="final-best">0</strong>
+                    </div>
+                    <div id="new-record-badge" class="new-record hidden">🏆 НОВЫЙ РЕКОРД!</div>
+                </div>
+                <button id="btn-retry" class="primary-btn" type="button">ИГРАТЬ СНОВА</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js?v=2"></script>
+</body>
+</html>
